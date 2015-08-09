@@ -7,7 +7,7 @@ var TokenNameNumber = TokenNameNumber || (function () {
 
 	var version = '0.5.3',
 		lastUpdate = 1430915009,
-		schemaVersion = 0.3,
+		schemaVersion = 0.31,
 		addTokenCache = [],
 		statuses = [
             'red', 'blue', 'green', 'brown', 'purple', 'pink', 'yellow', // 0-6
