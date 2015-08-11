@@ -52,7 +52,7 @@
 	var spellsData = [];
 
 	shaped.statblock = {
-		version: '1.90',
+		version: '1.91',
 		RegisterHandlers: function () {
 			on('chat:message', HandleInput);
 
@@ -125,6 +125,9 @@
 		case '!shaped-convert':
 			shaped.getSelectedToken(msg, shaped.parseOldToNew);
 			break;
+		case '!shaped-token-macro':
+			shaped.getSelectedToken(msg, shaped.tokenMacros, args);
+			break;
 		}
 	}
 
@@ -166,6 +169,62 @@
 			log('old sheet removed before importing');
 		}
 	};
+
+	shaped.tokenMacros = function (token, args) {
+		var id = token.get('represents'),
+			character = findObjs({
+				_type: 'character',
+				id: id
+			})[0],
+			characterName = getAttrByName(id, 'character_name', 'current'),
+			message;
+
+		if (typeof (character) === 'undefined') {
+			var message = 'Error: cannot find a character by the name of "' + characterName + '".';
+			log(message);
+			sendChat('GM', '/w gm ' + message);
+			return
+		}
+		characterId = character.id;
+
+		if (args[1] === 'init') {
+			createInitTokenAction(characterName);
+			message = 'created init token macro for ' + characterName + '.';
+			log(message);
+			sendChat('GM', '/w gm ' + message);
+		} else if (args[1] === 'query') {
+			createSaveQueryTokenAction(characterName);
+			createCheckQueryTokenAction(characterName);
+			createSkillQueryTokenAction(characterName);
+			message = 'created query token macros for ' + characterName + '.';
+			log(message);
+			sendChat('GM', '/w gm ' + message);
+		} else if (args[1] === 'bootstrap') {
+			createInitTokenAction(characterName);
+			createSaveQueryTokenAction(characterName);
+			createCheckQueryTokenAction(characterName);
+			createSkillQueryTokenAction(characterName);
+			message = 'bootstraped all token macros for ' + characterName + '.';
+			log(message);
+			sendChat('GM', '/w gm ' + message);
+		}
+	};
+
+	function createInitTokenAction(characterName) {
+		setAbility('Init', '', '%{' + characterName + '|Initiative}', shaped.settings.createAbilityAsToken);
+	}
+
+	function createSaveQueryTokenAction(characterName) {
+		setAbility('Save', '', '%{' + characterName + '|save_query_macro}', shaped.settings.createAbilityAsToken);
+	}
+
+	function createCheckQueryTokenAction(characterName) {
+		setAbility('Check', '', '%{' + characterName + '|check_query_macro}', shaped.settings.createAbilityAsToken);
+	}
+
+	function createSkillQueryTokenAction(characterName) {
+		setAbility('Skill', '', '%{' + characterName + '|skill_query_macro}', shaped.settings.createAbilityAsToken);
+	}
 
 	shaped.decrementAmmo = function (characterName, attributeName) {
 		var obj = findObjs({
@@ -518,10 +577,34 @@
 			text = text.toString();
 		}
 
-		text = text.replace(/\,\./gi, ',').replace(/ft\s\./gi, 'ft.').replace(/ft\.\s\,/gi, 'ft').replace(/ft\./gi, 'ft').replace(/(\d+) ft\/(\d+) ft/gi, '$1/$2 ft').replace(/lOd/g, '10d').replace(/dl0/gi, 'd10').replace(/dlO/gi, 'd10').replace(/dl2/gi, 'd12').replace(/Sd(\d+)/gi, '5d$1').replace(/ld(\d+)/gi, '1d$1').replace(/ld\s+(\d+)/gi, '1d$1').replace(/(\d+)d\s+(\d+)/gi, '$1d$2').replace(/(\d+)\s+d(\d+)/gi, '$1d$2').replace(/(\d+)\s+d(\d+)/gi, '$1d$2').replace(/(\d+)d(\d)\s(\d)/gi, '$1d$2$3').replace(/(\d+)f(?:Day|day)/gi, '$1/Day').replace(/(\d+)f(\d+)/gi, '$1/$2').replace(/{/gi, '(').replace(/}/gi, ')').replace(/(\d+)\((\d+) ft/gi, '$1/$2 ft').replace(/• /gi, '').replace(/’/gi, '\'');
+		text = text
+			.replace(/\,\./gi, ',')
+			.replace(/ft\s\./gi, 'ft.')
+			.replace(/ft\.\s\,/gi, 'ft')
+			.replace(/ft\./gi, 'ft')
+			.replace(/(\d+) ft\/(\d+) ft/gi, '$1/$2 ft')
+			.replace(/lOd/g, '10d')
+			.replace(/dl0/gi, 'd10')
+			.replace(/dlO/gi, 'd10')
+			.replace(/dl2/gi, 'd12')
+			.replace(/Sd(\d+)/gi, '5d$1')
+			.replace(/ld(\d+)/gi, '1d$1')
+			.replace(/ld\s+(\d+)/gi, '1d$1')
+			.replace(/(\d+)d\s+(\d+)/gi, '$1d$2')
+			.replace(/(\d+)\s+d(\d+)/gi, '$1d$2')
+			.replace(/(\d+)\s+d(\d+)/gi, '$1d$2')
+			.replace(/(\d+)d(\d)\s(\d)/gi, '$1d$2$3')
+			.replace(/(\d+)j(?:Day|day)/gi, '$1/Day')
+			.replace(/(\d+)f(?:Day|day)/gi, '$1/Day')
+			.replace(/(\d+)j(\d+)/gi, '$1/$2')
+			.replace(/(\d+)f(\d+)/gi, '$1/$2')
+			.replace(/{/gi, '(')
+			.replace(/}/gi, ')')
+			.replace(/(\d+)\((\d+) ft/gi, '$1/$2 ft')
+			.replace(/• /gi, '')
+			.replace(/’/gi, '\'');
 		text = text.replace(/(\d+)\s*?plus\s*?((?:\d+d\d+)|(?:\d+))/gi, '$2 + $1');
 		var replaceObj = {
-			'ljday': '1/day',
 			'jday': '/day',
 			'abol eth': 'aboleth',
 			'ACT IONS': 'ACTIONS',
@@ -569,7 +652,7 @@
 			'Spel/casting': 'Spellcasting',
 			'successfu l': 'successful',
 			'ta rget': 'target',
-			'Th e': 'The',
+			' Th e ': ' The ',
 			't_urns': 'turns',
 			'unti l': 'until',
 			'withi n': 'within'
@@ -1478,18 +1561,18 @@
 				setAttribute('legendary_action_notes', legendaryActionsNotes.join('\n'));
 			}
 		}
-		if (shaped.settings.addInitiativeTokenAbility) {
-			setAbility('Init', '', '%{' + characterName + '|Initiative}', shaped.settings.createAbilityAsToken);
-		}
 
+		if (shaped.settings.addInitiativeTokenAbility) {
+			createInitTokenAction();
+		}
 		if (shaped.settings.addSaveQueryMacroTokenAbility) {
-			setAbility('Save', '', '%{' + characterName + '|save_query_macro}', shaped.settings.createAbilityAsToken);
+			createSaveQueryTokenAction();
 		}
 		if (shaped.settings.addCheckQueryMacroTokenAbility) {
-			setAbility('Check', '', '%{' + characterName + '|check_query_macro}', shaped.settings.createAbilityAsToken);
+			createCheckQueryTokenAction();
 		}
 		if (shaped.settings.addSkillQueryMacroTokenAbility) {
-			setAbility('Skill', '', '%{' + characterName + '|skill_query_macro}', shaped.settings.createAbilityAsToken);
+			createSkillQueryTokenAction();
 		}
 
 		for (var key in actions) {
